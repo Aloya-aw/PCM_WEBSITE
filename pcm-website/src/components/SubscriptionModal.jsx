@@ -30,9 +30,28 @@ const SubscriptionModal = ({ isOpen, onClose }) => {
     formState: { errors },
   } = useForm({ resolver: yupResolver(schema) });
 
-  const onSubmit = (data) => {
-    console.log("Form Data:", data);
-    onClose(); // Close modal after submission
+  const onSubmit = async (data) => {
+    try {
+        const response = await fetch("https://cors-anywhere.herokuapp.com/https://script.google.com/macros/s/AKfycbx_Oqun8tN4_Lb8L77q7gD68R7Uecg1qqwcyEscIyITnnQqiv6oi2VpyEBhpqRWyLm_uw/exec", {
+        method: "POST",
+        headers: {
+            "Content-Type": "application/json",
+        },
+        body: JSON.stringify(data),
+    });
+
+    if (response.ok) {
+        alert("Subscription successful!");
+        reset(); //Reset form fields
+        onClose(); // Close modal after submission
+    } else {
+        alert("Subscription failed. Please try again.");
+    }
+    } catch (error) {
+        console.error("Error submitting form:", error);
+        alert("An error occured. Please try again.");
+    }
+    
   };
 
   return (
