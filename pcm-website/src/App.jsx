@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react'
 import SubscriptionModal from './components/SubscriptionModal'
+import ContactForm from './components/ContactForm';
 import './App.css'
 
 function App() {

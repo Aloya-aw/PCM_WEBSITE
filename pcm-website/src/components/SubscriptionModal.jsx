@@ -1,4 +1,4 @@
-import React, { useEffect, useState } from "react";
+import React, { useState } from "react";
 import Modal from "react-modal";
 import { motion } from "framer-motion";
 import { useForm } from "react-hook-form";
@@ -27,31 +27,79 @@ const SubscriptionModal = ({ isOpen, onClose }) => {
   const {
     register,
     handleSubmit,
+    reset,
     formState: { errors },
   } = useForm({ resolver: yupResolver(schema) });
 
-  const onSubmit = async (data) => {
-    try {
-        const response = await fetch("https://cors-anywhere.herokuapp.com/https://script.google.com/macros/s/AKfycbx_Oqun8tN4_Lb8L77q7gD68R7Uecg1qqwcyEscIyITnnQqiv6oi2VpyEBhpqRWyLm_uw/exec", {
-        method: "POST",
-        headers: {
-            "Content-Type": "application/json",
-        },
-        body: JSON.stringify(data),
-    });
+  const [status, setStatus] = useState({
+    type: null,
+    message: "",
+  });
+  
+  // Your Apps Script URL
+  const SCRIPT_URL = "https://script.google.com/macros/s/AKfycby6T7vE7akGqgG_MDTVUhchM-L5Pdyt2FKw-vRFlxIExr3b5pDrG6NC3RcJQlKV8_JKDQ/exec";
 
-    if (response.ok) {
-        alert("Subscription successful!");
-        reset(); //Reset form fields
-        onClose(); // Close modal after submission
-    } else {
-        alert("Subscription failed. Please try again.");
-    }
-    } catch (error) {
-        console.error("Error submitting form:", error);
-        alert("An error occured. Please try again.");
+  // Method 1: Submit via standard HTML form submission (reliable workaround for CORS)
+  const createFormSubmitElement = (formData) => {
+    // Set loading state
+    setStatus({ type: "loading", message: "Submitting..." });
+    
+    // Create a hidden form
+    const form = document.createElement("form");
+    form.method = "POST";
+    form.action = SCRIPT_URL;
+    form.target = "hidden-iframe";
+    
+    // Add form data
+    for (const key in formData) {
+      const input = document.createElement("input");
+      input.type = "hidden";
+      input.name = key;
+      input.value = formData[key];
+      form.appendChild(input);
     }
     
+    // Create hidden iframe to prevent page reload
+    let iframe = document.querySelector("#hidden-iframe");
+    if (!iframe) {
+      iframe = document.createElement("iframe");
+      iframe.name = "hidden-iframe";
+      iframe.id = "hidden-iframe";
+      iframe.style.display = "none";
+      document.body.appendChild(iframe);
+      
+      // Handle iframe load event
+      iframe.addEventListener("load", () => {
+        setTimeout(() => {
+          setStatus({ 
+            type: "success", 
+            message: "Subscription successful! Thank you for subscribing."
+          });
+          
+          // Reset form
+          reset();
+          
+          // Close modal after delay
+          setTimeout(() => {
+            onClose();
+          }, 2000);
+        }, 1000);
+      });
+    }
+    
+    // Submit the form
+    document.body.appendChild(form);
+    form.submit();
+    
+    // Clean up
+    setTimeout(() => {
+      document.body.removeChild(form);
+    }, 500);
+  };
+
+  const onSubmit = (data) => {
+    // Use the HTML form submission approach
+    createFormSubmitElement(data);
   };
 
   return (
@@ -64,12 +112,25 @@ const SubscriptionModal = ({ isOpen, onClose }) => {
         <h2 className="text-xl font-semibold">Subscribe to our Newsletter</h2>
         <p className="text-sm text-gray-500 mb-4">Stay updated with our latest news</p>
 
+        {status.type === "success" && (
+          <div className="p-3 mb-4 bg-green-100 text-green-700 rounded">
+            {status.message}
+          </div>
+        )}
+
+        {status.type === "error" && (
+          <div className="p-3 mb-4 bg-red-100 text-red-700 rounded">
+            {status.message}
+          </div>
+        )}
+
         <form onSubmit={handleSubmit(onSubmit)} className="space-y-3">
           <input
             type="text"
             placeholder="Your Name"
             {...register("name")}
             className="w-full p-2 border rounded"
+            disabled={status.type === "loading" || status.type === "success"}
           />
           <p className="text-red-500 text-sm">{errors.name?.message}</p>
 
@@ -78,15 +139,28 @@ const SubscriptionModal = ({ isOpen, onClose }) => {
             placeholder="Your Email"
             {...register("email")}
             className="w-full p-2 border rounded"
+            disabled={status.type === "loading" || status.type === "success"}
           />
           <p className="text-red-500 text-sm">{errors.email?.message}</p>
 
-          <button type="submit" className="w-full p-2 bg-blue-500 text-white rounded">
-            Subscribe
+          <button
+            type="submit"
+            className={`w-full p-2 ${
+              status.type === "loading" ? "bg-blue-300" : "bg-blue-500"
+            } text-white rounded`}
+            disabled={status.type === "loading" || status.type === "success"}
+          >
+            {status.type === "loading" ? "Submitting..." : "Subscribe"}
           </button>
         </form>
 
-        <button onClick={onClose} className="mt-3 text-gray-600">Close</button>
+        <button 
+          onClick={onClose} 
+          className="mt-3 text-gray-600"
+          disabled={status.type === "loading"}
+        >
+          Close
+        </button>
       </motion.div>
     </Modal>
   );
